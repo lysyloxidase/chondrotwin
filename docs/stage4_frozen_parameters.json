@@ -1,0 +1,15 @@
+{
+  "stage4_parameters": {
+    "damage_D50": 0.0,
+    "c_over_max": 0.15,
+    "k_cat": 0.5,
+    "switch_bias_sd": 0.0,
+    "senescence_competent_fraction": 1.0,
+    "sen_overload_weight": 1.0,
+    "senescent_death_rate": 0.0,
+    "baseline_runx2": 0.0
+  },
+  "selected_by": "lowest mean calibration loss (GSE104782 OA1-OA5, SenMayo senescence target, seeds 1-3)",
+  "calibration_loss_mean": 178.43357320792435,
+  "validation_loss_mean": 98.4340138077328
+}

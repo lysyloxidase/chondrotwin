@@ -62,6 +62,8 @@ def test_growth_plate_scenario_holds_cells_proliferative():
     net = chondrocyte_network()
     traj = net.trajectory({"SOX9": 1}, {"PTHrP": 1, "WNT": 1})
     assert classify_state(traj[-1]) == "proliferative (PTHrP-held)"
+    # proliferative growth-plate chondrocytes are SOX9-high: PTHrP/PKA activates SOX9 (Huang et al., PNAS 2001)
+    assert traj[-1]["SOX9"] == 1 and traj[-1]["RUNX2"] == 0
 
 
 def test_basal_viable_cells_cannot_reach_terminal_states():
@@ -72,3 +74,12 @@ def test_basal_viable_cells_cannot_reach_terminal_states():
 def test_attractor_table_has_rows():
     rows = attractor_table()
     assert len(rows) >= len(SCENARIOS)
+
+
+def test_docs_attractor_table_is_up_to_date():
+    import io, pathlib, runpy, contextlib
+    root = pathlib.Path(__file__).resolve().parents[1]
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        runpy.run_path(str(root / "scripts" / "attractor_table.py"), run_name="__main__")
+    assert buf.getvalue().strip() == (root / "docs" / "attractors.md").read_text(encoding="utf-8").strip()

@@ -1,4 +1,3 @@
-import numpy as np
 from chondrotwin import quasi_potential_langevin, schematic_landscape, MiniTwin, catabolic_bias
 from chondrotwin.landscape import basin_depths
 
@@ -12,6 +11,22 @@ def test_langevin_landscape_has_two_basins_and_a_ridge():
     res = quasi_potential_langevin(n_walkers=800, n_steps=2500, burn_in=800, seed=1)
     d = basin_depths(res["U"], res["S_edges"], res["R_edges"])
     assert d["barrier_from_SOX9"] > 0.5 and d["barrier_from_RUNX2"] > 0.5
+    assert 0.0 <= res["crossed"] <= 1.0
+
+
+def test_escape_barrier_from_articular_state_falls_with_catabolic_bias():
+    """README claim: barriers fall as the catabolic bias rises (escape from the SOX9-high basin)."""
+    kw = dict(n_walkers=1000, n_steps=3000, burn_in=1000, seed=2)
+    b = [basin_depths(**{k: r[k] for k in ("U", "S_edges", "R_edges")})["barrier_from_SOX9"]
+         for r in (quasi_potential_langevin(lam=lam, **kw) for lam in (0.0, 0.2, 0.4))]
+    assert b[0] > b[1] > b[2]
+
+
+def test_escape_barrier_is_insensitive_to_initial_walker_split():
+    kw = dict(lam=0.35, n_walkers=1500, n_steps=4000, burn_in=1000, seed=0)
+    b = [basin_depths(**{k: r[k] for k in ("U", "S_edges", "R_edges")})["barrier_from_SOX9"]
+         for r in (quasi_potential_langevin(start_fraction_sox9=f, **kw) for f in (0.5, 0.9))]
+    assert abs(b[0] - b[1]) < 0.5
 
 
 def test_catabolic_bias_sign():

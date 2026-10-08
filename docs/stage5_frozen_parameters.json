@@ -1,0 +1,18 @@
+{
+  "stage5_parameters": {
+    "damage_D50": 0.0,
+    "c_over_max": 0.15,
+    "k_cat": 0.5,
+    "switch_bias_sd": 0.0,
+    "senescence_competent_fraction": 1.0,
+    "sen_overload_weight": 1.0,
+    "senescent_death_rate": 0.0,
+    "k_inf": 0.0,
+    "sen_infl_gain": 2.0,
+    "C_joint": 0.0,
+    "baseline_runx2": 0.0
+  },
+  "selected_by": "lowest mean calibration loss (GSE104782 OA1-OA5 SenMayo cell loss + GSE114007 between-joint loss, seeds 1-3)",
+  "calibration_loss_mean": 271.2691856596219,
+  "validation_loss_mean": 191.26962625943034
+}

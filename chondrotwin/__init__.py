@@ -21,12 +21,14 @@ framework at the smallest scale at which each idea becomes computable:
   the gene switch, and matrix turnover
 * :mod:`chondrotwin.abm` - a multi-agent cartilage model in which one agent is one
   chondrocyte (vectorized; ~3e4 cells per mm^2 x 2 mm slab run in seconds)
+* :mod:`chondrotwin.knee` - the agent-based model calibrated and tested on open data
+  (OrthoLoad knee loads, OAIZIB-CM tibial cartilage, GSE104782 single-cell states); see DATA.md
 
 All models are illustrative: parameters are dimensionless or order-of-magnitude
 and are not fitted to data. See ``docs/models.md`` for the equations.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.9.0"
 
 from .toggle import ToggleSwitch, FixedPoint
 from .growth_plate import GrowthPlateModel, GrowthPlateSolution

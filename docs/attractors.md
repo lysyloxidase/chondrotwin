@@ -14,4 +14,4 @@
 | WNT + TGF-beta | cycle (period 2) | transit (saddle-like) | 0.500 | none |
 | WNT + TGF-beta | fixed point | hypertrophic (RUNX2-high) | 0.375 | RUNX2 |
 | WNT + TGF-beta | fixed point | articular (SOX9-high) | 0.125 | SOX9 |
-| growth plate, PTHrP present | fixed point | proliferative (PTHrP-held) | 1.000 | none |
+| growth plate, PTHrP present | fixed point | proliferative (PTHrP-held) | 1.000 | SOX9 |

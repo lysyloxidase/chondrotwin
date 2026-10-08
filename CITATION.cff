@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite the accompanying article and the software itself."
 title: "chondrotwin: minimal computable models of chondrocyte fate (CHONDRO-TWIN)"
-version: 0.2.0
+version: 0.9.0
 date-released: 2026-10-08
 license: MIT
 repository-code: "https://github.com/<org>/chondrotwin"

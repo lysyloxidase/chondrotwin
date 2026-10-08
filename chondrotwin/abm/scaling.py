@@ -3,14 +3,22 @@
 Order-of-magnitude anatomy (adult human knee; values vary between studies and
 with age, site and depth):
 
-* cell density of articular cartilage ~ 1e4 cells/mm^3 on average, with a
-  strong depth gradient (roughly 2.4e4 superficial, 1.0e4 middle, 0.8e4 deep)
+* cell density of adult human articular cartilage ~ 1e4 cells/mm^3 on average
+  (9.6e3 mm^-3 full-depth in the medial femoral condyle, Hunziker et al. 2002;
+  the model default 1.4e4 is at the upper end), with a strong depth gradient
+  (superficial zone roughly 2-3x the mean)
 * total knee cartilage volume (femoral + tibial + patellar) ~ 2e4 mm^3
-  => of the order of 1e8 chondrocytes in one knee.
+  => of the order of 2-3e8 chondrocytes in one knee.
 
-With the structure-of-arrays representation used here (~60 bytes per agent)
-1e8 agents need ~6 GB of RAM, which is feasible on a workstation; the time per
-step scales linearly with the number of agents (see :func:`benchmark`).  In
+Memory (measured, see VALIDATION.md): the structure-of-arrays state takes
+62 bytes per slot and slots are allocated for 1.5x the initial cell number
+(~93 bytes per agent); the vectorized daily step allocates float64/int64
+temporaries of the full capacity, ~260 bytes per agent at peak.  A whole knee
+(2.8e8 agents) in one process therefore needs ~100 GB at peak - a large
+workstation or a chunked / GPU implementation.  The time per step scales
+linearly with the number of agents for a fixed voxel resolution (see
+:func:`benchmark`); the extrapolation does not include the cost of the sparse
+cytokine solve on a joint-sized voxel grid.  In
 practice a *representative volume* (e.g. 1 x 1 x 2 mm, ~3e4 cells) is simulated
 under the strain field of a tissue/joint-scale model, and whole-cartilage
 behaviour is obtained by tiling such volumes over the joint surface with
@@ -26,7 +34,8 @@ import numpy as np
 
 CELLS_PER_MM3_MEAN = 1.4e4
 KNEE_CARTILAGE_VOLUME_MM3 = 2.0e4     # femoral + tibial + patellar, order of magnitude
-BYTES_PER_AGENT = 60                  # float32/int8/bool fields of ChondrocyteAgents
+BYTES_PER_AGENT = 93                  # persistent state: 62 B per slot x 1.5 capacity (ChondrocyteAgents)
+PEAK_BYTES_PER_AGENT = 360            # state + ~260 B of temporaries during one vectorized step (measured)
 
 
 def cells_for_volume(volume_mm3: float, density: float = CELLS_PER_MM3_MEAN) -> int:
@@ -52,7 +61,7 @@ class Benchmark:
     def extrapolate(self, n_agents: int, n_steps: int = 365) -> Dict[str, float]:
         per_step = self.seconds_per_step * n_agents / self.n_agents
         return {"n_agents": n_agents, "seconds_per_step": per_step, "hours_for_steps": per_step * n_steps / 3600,
-                "memory_gb": memory_gb(n_agents)}
+                "memory_gb": memory_gb(n_agents), "peak_memory_gb": memory_gb(n_agents, PEAK_BYTES_PER_AGENT)}
 
 
 def benchmark(n_steps: int = 5, Lx: float = 1.0, Ly: float = 1.0, h: float = 2.0, cells_per_mm3: float = CELLS_PER_MM3_MEAN) -> Benchmark:
@@ -71,8 +80,9 @@ def scaling_table(bench: Benchmark) -> str:
     rows = [("1 mm^3 (RVE)", cells_for_volume(1.0)), ("1 x 1 x 2 mm slab", cells_for_volume(2.0)),
             ("1 cm^2 x 2 mm patch", cells_for_volume(200.0)), ("medial tibial plateau (~2.5e3 mm^3)", cells_for_volume(2.5e3)),
             ("whole knee (~2e4 mm^3)", cells_for_volume(KNEE_CARTILAGE_VOLUME_MM3))]
-    lines = ["| tissue | agents | s / step (this machine) | hours / 365 steps | RAM |", "|---|---|---|---|---|"]
+    lines = ["| tissue | agents | s / step (this machine) | hours / 365 steps | RAM state / peak |", "|---|---|---|---|---|"]
     for name, n in rows:
         e = bench.extrapolate(n)
-        lines.append(f"| {name} | {n:.2e} | {e['seconds_per_step']:.3g} | {e['hours_for_steps']:.3g} | {e['memory_gb']:.3g} GB |")
+        lines.append(f"| {name} | {n:.2e} | {e['seconds_per_step']:.3g} | {e['hours_for_steps']:.3g} | "
+                     f"{e['memory_gb']:.3g} / {e['peak_memory_gb']:.3g} GB |")
     return "\n".join(lines)

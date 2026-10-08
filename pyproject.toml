@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "chondrotwin"
-version = "0.2.0"
+version = "0.9.0"
 description = "Minimal computable models of chondrocyte fate: the SOX9-RUNX2 toggle switch, the IHH-PTHrP growth-plate loop, a Boolean fate network, Langevin quasi-potential landscapes, a biphasic cartilage model, a toy digital-twin loop and a multi-agent cartilage model (one agent = one chondrocyte) - CHONDRO-TWIN."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -21,6 +21,7 @@ dependencies = ["numpy>=1.22", "scipy>=1.9", "pandas>=1.5"]
 
 [project.optional-dependencies]
 plot = ["matplotlib>=3.5"]
+data = ["openpyxl>=3.0", "nibabel>=4.0"]
 dev = ["pytest>=7", "matplotlib>=3.5"]
 
 [project.urls]

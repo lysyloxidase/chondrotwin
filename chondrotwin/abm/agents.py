@@ -16,6 +16,9 @@ age            days since start (or since division)
 senescent      SASP-producing, non-dividing, non-synthesizing
 dead           removed from the tissue; ``death_cause`` 0 none, 1 ferroptosis, 2 apoptosis
 cluster        id of the proliferative cluster the cell belongs to (0 = none)
+damage         accumulated overload exposure (overload-days; drives the cumulative senescence hazard)
+bias           cell-specific offset of the toggle-switch bias (stage-3 heterogeneity; 0 by default)
+competent      can become senescent (stage-3 heterogeneity; True by default)
 strain, lam, C diagnostic: last cell strain, toggle bias and local cytokine level
 """
 from __future__ import annotations
@@ -44,6 +47,9 @@ class ChondrocyteAgents:
     dead: np.ndarray = field(init=False)
     death_cause: np.ndarray = field(init=False)
     cluster: np.ndarray = field(init=False)
+    damage: np.ndarray = field(init=False)
+    bias: np.ndarray = field(init=False)
+    competent: np.ndarray = field(init=False)
     alive: np.ndarray = field(init=False)
     strain: np.ndarray = field(init=False)
     lam: np.ndarray = field(init=False)
@@ -60,6 +66,9 @@ class ChondrocyteAgents:
         self.dead = np.zeros(n, dtype=bool)
         self.death_cause = np.zeros(n, dtype=np.int8)
         self.cluster = np.zeros(n, dtype=np.int32)
+        self.damage = f()
+        self.bias = f()
+        self.competent = np.ones(n, dtype=bool)
         self.alive = np.zeros(n, dtype=bool)       # slot in use and not dead
         self.strain, self.lam, self.C = f(), f(), f()
 
@@ -96,4 +105,5 @@ class ChondrocyteAgents:
 
     def memory_bytes(self) -> int:
         return int(sum(getattr(self, a).nbytes for a in ("x", "y", "z", "zone", "S", "R", "M", "nrf2", "age", "senescent",
-                                                          "dead", "death_cause", "cluster", "alive", "strain", "lam", "C")))
+                                                          "dead", "death_cause", "cluster", "damage", "bias", "competent", "alive",
+                                                          "strain", "lam", "C")))

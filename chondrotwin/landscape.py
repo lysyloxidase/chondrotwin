@@ -60,22 +60,35 @@ def cross_section(s: np.ndarray, tilt: float = 0.0) -> np.ndarray:
 def quasi_potential_langevin(model: ToggleSwitch | None = None, lam: float = 0.0, noise: float = 0.25,
                              n_walkers: int = 3000, n_steps: int = 6000, burn_in: int = 1500,
                              dt: float = 0.01, s_max: float = 3.0, bins: int = 60,
-                             seed: int = 0) -> Dict[str, np.ndarray]:
+                             seed: int = 0, start_fraction_sox9: float = 0.5) -> Dict[str, np.ndarray]:
     """Quasi-potential U = -ln P of the toggle switch from Langevin dynamics.
 
     Many walkers are integrated with Euler-Maruyama (additive Gaussian noise of
     amplitude ``noise``) and their positions after ``burn_in`` steps are
     histogrammed on a (S, R) grid.  Returns a dict with ``S_edges``, ``R_edges``,
-    ``P`` (occupancy probability) and ``U`` (quasi-potential, min 0, NaN where
-    unvisited).
+    ``P`` (occupancy probability), ``U`` (quasi-potential, min 0, NaN where
+    unvisited) and ``crossed`` (fraction of walkers that crossed the diagonal
+    S = R at least once).
+
+    A fraction ``start_fraction_sox9`` (default one half) of the walkers starts
+    in the SOX9-high basin, the rest in the RUNX2-high basin.  When ``crossed`` is small the
+    sampling has not equilibrated *between* basins, so P is quasi-stationary
+    within each basin only: the relative depth of the two basins (and the
+    barrier seen from the less-populated side) then reflects the initial split
+    rather than the dynamics.  Exceptions: at lam = 0 the switch is symmetric and
+    50/50 is the exact stationary split; and the escape barrier from the SOX9-high
+    basin for lam > 0 is insensitive to the initial split (see VALIDATION.md).
+    Barrier heights in units of -ln P scale roughly as 1/noise^2.
     """
     model = model or ToggleSwitch()
     rng = np.random.default_rng(seed)
-    # start half the walkers near each attractor so both basins are sampled
+    # start walkers near both attractors so both basins are sampled
     y = np.empty((n_walkers, 2))
-    half = n_walkers // 2
+    half = int(start_fraction_sox9 * n_walkers)
     y[:half] = [2.0, 0.1]; y[half:] = [0.1, 2.0]
     y += 0.1 * rng.standard_normal(y.shape)
+    side0 = y[:, 0] > y[:, 1]
+    crossed = np.zeros(n_walkers, dtype=bool)
     H = np.zeros((bins, bins))
     edges = np.linspace(0.0, s_max, bins + 1)
     sq = noise * np.sqrt(dt)
@@ -86,6 +99,7 @@ def quasi_potential_langevin(model: ToggleSwitch | None = None, lam: float = 0.0
         y[:, 0] += dt * dS + sq * rng.standard_normal(n_walkers)
         y[:, 1] += dt * dR + sq * rng.standard_normal(n_walkers)
         np.maximum(y, 0.0, out=y)
+        crossed |= (y[:, 0] > y[:, 1]) != side0
         if step >= burn_in:
             h, _, _ = np.histogram2d(y[:, 0], y[:, 1], bins=[edges, edges])
             H += h
@@ -94,7 +108,7 @@ def quasi_potential_langevin(model: ToggleSwitch | None = None, lam: float = 0.0
         U = -np.log(P)
     U[~np.isfinite(U)] = np.nan
     U -= np.nanmin(U)
-    return {"S_edges": edges, "R_edges": edges, "P": P, "U": U}
+    return {"S_edges": edges, "R_edges": edges, "P": P, "U": U, "crossed": float(crossed.mean())}
 
 
 def basin_depths(U: np.ndarray, S_edges: np.ndarray, R_edges: np.ndarray) -> Dict[str, float]:

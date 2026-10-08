@@ -1,0 +1,11 @@
+# Normalize text files to LF on every platform.
+* text=auto eol=lf
+
+# Pre-registered artefacts are verified by SHA-256 of their exact bytes: never convert them.
+chondrotwin/knee/independent*.py -text
+docs/stage*_frozen_parameters.json -text
+
+# Binary data
+*.png binary
+*.xlsx binary
+*.gz binary

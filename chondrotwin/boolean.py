@@ -12,13 +12,15 @@ The chondrocyte network encodes, in the simplest possible form, the wiring of
 Figure 3 of the paper:
 
 * mechanosensing: Piezo1 is activated by overload, or by physiological load in
-  the presence of IL-1beta (inflammatory sensitization); TRPV4 by physiological
-  load only;
+  the presence of IL-1 (inflammatory sensitization: IL-1alpha upregulates Piezo1
+  via p38 MAPK, Lee et al., PNAS 2021); TRPV4 by physiological load only;
 * Ca2+ overload follows Piezo1; a stiff matrix drives nuclear YAP unless
   cytokines degrade it; NF-kB is driven by IL-1beta, Ca2+ overload or a
   senescent (SASP) state and is inhibited by YAP; HIF-2alpha follows NF-kB;
 * the SOX9-RUNX2 toggle: SOX9 requires the absence of RUNX2, NF-kB, nuclear YAP
-  and ferroptosis, and TGF-beta can override WNT; RUNX2 requires the absence of
+  and ferroptosis, and TGF-beta or PTHrP can override WNT (PTHrP/PKA
+  phosphorylates and activates SOX9: Huang et al., PNAS 2001, so cells held
+  by PTHrP stay SOX9-high, as in the proliferative zone); RUNX2 requires the absence of
   SOX9, PTHrP and ferroptosis, and a driver (WNT, HIF-2alpha, Ca2+ overload) or
   its own autoregulation;
 * terminal exits: ferroptosis follows Ca2+ overload when Nrf2 antioxidant
@@ -191,7 +193,7 @@ def chondrocyte_network() -> BooleanNetwork:
         "NFkB": lambda s: (s["IL1b"] or s["CaHigh"] or s["Senescent"]) and not s["YAP"],
         "HIF2a": lambda s: s["NFkB"],
         "SOX9": lambda s: (not s["RUNX2"]) and (not s["NFkB"]) and (not s["YAP"]) and (not s["Ferroptotic"])
-                          and (s["TGFb"] or not s["WNT"]),
+                          and (s["TGFb"] or s["PTHrP"] or not s["WNT"]),
         "RUNX2": lambda s: (not s["SOX9"]) and (not s["PTHrP"]) and (not s["Ferroptotic"])
                            and (s["WNT"] or s["HIF2a"] or s["CaHigh"] or s["RUNX2"]),
         "Senescent": lambda s: s["Senescent"] or (s["NFkB"] and s["CaHigh"] and not s["Ferroptotic"]),
@@ -207,14 +209,14 @@ def classify_state(state: Mapping[str, int]) -> str:
         return "ferroptotic"
     if state.get("Senescent"):
         return "senescent"
+    if state.get("PTHrP") and state.get("SOX9") and not state.get("RUNX2"):
+        return "proliferative (PTHrP-held)"
     if state.get("SOX9") and not state.get("RUNX2"):
         return "articular (SOX9-high)"
     if state.get("RUNX2") and not state.get("SOX9"):
         return "hypertrophic (RUNX2-high)"
     if state.get("YAP") and not state.get("SOX9") and not state.get("RUNX2"):
         return "dedifferentiated (YAP-high)"
-    if state.get("PTHrP") and not state.get("SOX9") and not state.get("RUNX2"):
-        return "proliferative (PTHrP-held)"
     return "transit (saddle-like)"
 
 

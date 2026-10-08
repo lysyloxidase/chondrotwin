@@ -43,7 +43,7 @@ def main():
     figure_cross_sections(results[:4], os.path.join(a.outdir, "abm_cross_sections.png"))
     figure_time_courses(results, os.path.join(a.outdir, "abm_time_courses.png"))
     figure_depth_profiles(results, os.path.join(a.outdir, "abm_depth_profiles.png"))
-    b = benchmark(n_steps=5)
+    b = benchmark(n_steps=20)
     table = scaling_table(b)
     plan = tile_plan()
     text = (f"Benchmark on this machine: {b.n_agents} agents, {b.seconds_per_step * 1e3:.1f} ms per step\n\n{table}\n\n"

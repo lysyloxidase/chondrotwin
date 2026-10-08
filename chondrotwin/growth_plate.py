@@ -63,7 +63,12 @@ class GrowthPlateModel:
         h = self.hill
         return self.K_P ** h / (self.K_P ** h + np.maximum(P, 0.0) ** h)
 
-    def steady_state(self, t_end: float = 12.0, tol: float = 1e-4) -> GrowthPlateSolution:
+    def steady_state(self, t_end: float = 40.0, tol: float = 1e-4) -> GrowthPlateSolution:
+        """Integrate to steady state (stops early once max |dP/dt|, |dI/dt| < ``tol``).
+
+        ``t_end`` is an upper bound; the slower Jansen-like variant (k_P x 0.35)
+        needs t ~ 20-30 to meet ``tol``, so check ``converged`` on the result.
+        """
         N = self.n_grid
         x = np.linspace(0.0, 1.0, N)
         dx = x[1] - x[0]

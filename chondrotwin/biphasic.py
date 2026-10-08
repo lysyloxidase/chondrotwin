@@ -23,7 +23,6 @@ Explicit finite differences; SI units (Pa, m, s).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Sequence
 
 import numpy as np
 
@@ -87,6 +86,38 @@ class ConfinedCompression:
         pressure = sigma0 + self.H_A * strain
         pressure[:, -1] = 0.0                               # free-draining surface
         return BiphasicSolution(T, z, U, strain, np.maximum(pressure, 0.0), sigma0, self.tau)
+
+    def solve_history(self, sigma_fn, t_end: float, dt_max: float = 0.02, n_out: int = 200,
+                      safety: float = 0.4) -> BiphasicSolution:
+        """Response to a time-varying applied stress ``sigma_fn(t)`` (Pa), e.g. a cyclic gait waveform.
+
+        The time step is the smaller of the stability limit and ``dt_max`` (to resolve the loading).
+        Returned ``pressure`` uses the stress at each output time; ``sigma0`` is the time-averaged stress.
+        """
+        z = np.linspace(0.0, self.h, self.n_z)
+        dz = z[1] - z[0]
+        c = self.H_A * self.k
+        n_steps = int(np.ceil(t_end / min(safety * dz * dz / c, dt_max)))
+        dt = t_end / n_steps
+        out_idx = set(np.round(np.linspace(0, n_steps, n_out)).astype(int).tolist())
+        u = np.zeros(self.n_z)
+        U, T, S = [], [], []
+        if 0 in out_idx:
+            U.append(u.copy()); T.append(0.0); S.append(float(sigma_fn(0.0)))
+        acc = 0.0
+        for step in range(1, n_steps + 1):
+            t = step * dt
+            s = float(sigma_fn(t))
+            acc += s
+            u[1:-1] = u[1:-1] + dt * c * (u[2:] - 2 * u[1:-1] + u[:-2]) / dz ** 2
+            u[0] = 0.0
+            u[-1] = u[-2] - s * dz / self.H_A
+            if step in out_idx:
+                U.append(u.copy()); T.append(t); S.append(s)
+        U = np.array(U); strain = np.gradient(U, dz, axis=1)
+        pressure = np.array(S)[:, None] + self.H_A * strain
+        pressure[:, -1] = 0.0
+        return BiphasicSolution(np.array(T), z, U, strain, np.maximum(pressure, 0.0), acc / n_steps, self.tau)
 
     def strain_at(self, sigma0: float, depth_fraction: float = 0.5, t: float | None = None) -> float:
         """Compressive strain magnitude at a given depth fraction (0 = bone, 1 = surface)."""

@@ -5,7 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.9", "3.11", "3.12"]
+        python-version: ["3.9", "3.11", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -14,4 +14,5 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: pytest -q
       - run: python scripts/make_figures.py figures
-      - run: python scripts/run_abm.py figures/abm --quick
+      - run: python scripts/run_abm.py figures/abm_quick --quick
+      - run: python scripts/validate.py --quick

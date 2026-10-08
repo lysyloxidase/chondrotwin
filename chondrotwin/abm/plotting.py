@@ -1,7 +1,7 @@
 """Figures for the agent-based cartilage model."""
 from __future__ import annotations
 
-from typing import Dict, Sequence
+from typing import Sequence
 
 import numpy as np
 

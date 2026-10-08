@@ -37,6 +37,7 @@ class Scenario:
     C_synovial: float = 0.0                # cytokine level at the articular surface (inflamed joint)
     initial_senescent_fraction: float = 0.0
     initial_hypertrophic_fraction: float = 0.0
+    C_joint: float = 0.0                   # joint-level (e.g. synovial) cytokine background added throughout the tissue
     days: int = 365
 
     def stress(self, day: int) -> float:
@@ -68,6 +69,24 @@ class Rates:
     M_div: float = 0.6
     cluster_max: int = 8
     k_empty: float = 0.02
+    # stage-2 revisions (defaults reproduce the 0.2-0.4 model exactly; see docs/knee_open_data.md)
+    damage_D50: float = 0.0                # senescence hazard x D / (D + D50), D = overload-days; 0 = instantaneous
+    c_over_max: float = 0.9                # maximal catabolic bias from strain alone (loading.catabolic_bias c_over)
+    k_cat: float = 0.0                     # switch-independent catabolism (NF-kB / HIF-2a -> MMP13): deg x (R + k_cat * overload)
+
+    # stage-3 revisions: cell-to-cell heterogeneity (drawn with a separate generator, so defaults stay bit-identical)
+    switch_bias_sd: float = 0.0            # SD of a fixed per-cell offset added to the switch bias lam
+    senescence_competent_fraction: float = 1.0   # fraction of cells that can become senescent at all
+    # stage-4 revisions of senescence (defaults keep the model bit-identical)
+    sen_overload_weight: float = 1.0       # overload-driven senescence x (w + (1 - w) * inflammation); 1 = no gating
+    senescent_death_rate: float = 0.0      # per-day death (apoptosis) hazard of senescent cells
+    # stage-5 revisions: inflammation-driven catabolism and cytokine amplification of senescence (defaults bit-identical)
+    k_inf: float = 0.0                     # catabolic drive += k_inf * C / (K_C + C)  (IL-1 / TNF -> NF-kB -> MMP13)
+    sen_infl_gain: float = 2.0             # senescence hazard x (1 + sen_infl_gain * C / (K_C + C))
+
+    @classmethod
+    def stage2(cls, damage_D50: float, c_over_max: float, k_cat: float) -> "Rates":
+        return cls(damage_D50=damage_D50, c_over_max=c_over_max, k_cat=k_cat)
 
 
 @dataclass
@@ -110,6 +129,11 @@ class CartilageABM:
         ag.M[idx] = np.clip(0.9 + 0.05 * self.rng.standard_normal(n), 0.5, 1.0)
         ag.nrf2[idx] = np.clip(self.rng.beta(4, 2, n), 0, 1)
         ag.alive[idx] = True
+        r = self.rates
+        if r.switch_bias_sd > 0 or r.senescence_competent_fraction < 1:
+            het = np.random.default_rng([self.seed, 3])        # separate stream: the main stream is unchanged
+            ag.bias[idx] = r.switch_bias_sd * het.standard_normal(n)
+            ag.competent[idx] = het.uniform(size=n) < r.senescence_competent_fraction
         return ag
 
     def seed_fates(self, senescent_fraction: float = 0.0, hypertrophic_fraction: float = 0.0,
@@ -149,10 +173,15 @@ class CartilageABM:
         prod[alive & ~ag.senescent & (ag.R > ag.S)] = r.catabolic_production
         s.solve_cytokine(ix[alive], iy[alive], iz[alive], prod[alive], scenario.C_synovial, reference_density=self.cells_per_mm3)
         C = s.C_grid[ix, iy, iz]
+        if scenario.C_joint > 0:
+            C = C + scenario.C_joint
         ag.C[alive] = C[alive]
         infl = C / (r.K_C + C)
         # 3. fate dynamics ---------------------------------------------------------
-        lam = np.clip(catabolic_bias(m) + r.inflammatory_gain * infl, -0.95, 0.95)
+        lam = catabolic_bias(m, c_over=r.c_over_max) + r.inflammatory_gain * infl
+        if r.switch_bias_sd > 0:
+            lam = lam + ag.bias
+        lam = np.clip(lam, -0.95, 0.95)
         ag.lam[alive] = lam[alive]
         dyn = alive & ~ag.senescent
         S, R = ag.S[dyn].astype(float), ag.R[dyn].astype(float); lam_d = lam[dyn]
@@ -164,12 +193,18 @@ class CartilageABM:
         ag.S[dyn], ag.R[dyn] = S, R
         # 4. matrix turnover -------------------------------------------------------
         syn = np.where(ag.senescent, 0.2, 1.0) * r.k_syn * ag.S * (1.0 - ag.M)
-        deg = r.k_deg * ag.R * ag.M * (1.0 + r.cytokine_deg_gain * infl)
+        cat = ag.R + r.k_cat * overload if r.k_cat > 0 else ag.R      # keeps the 0.2-0.4 arithmetic bit-identical
+        if r.k_inf > 0:
+            cat = cat + r.k_inf * infl
+        deg = r.k_deg * cat * ag.M * (1.0 + r.cytokine_deg_gain * infl)
         ag.M[alive] = np.clip(ag.M[alive] + syn[alive] - deg[alive], 0.05, 1.0)
         # 5. hazards ---------------------------------------------------------------
         u = self.rng.uniform(size=ag.capacity)
-        h_sen = r.h_sen_base + r.h_sen_overload * overload * (1.0 + 2.0 * infl)
-        new_sen = alive & ~ag.senescent & (u < 1.0 - np.exp(-h_sen))
+        ag.damage[alive] += overload[alive]
+        dmg = ag.damage / (ag.damage + r.damage_D50) if r.damage_D50 > 0 else 1.0
+        gate = r.sen_overload_weight + (1.0 - r.sen_overload_weight) * infl if r.sen_overload_weight < 1 else 1.0
+        h_sen = r.h_sen_base + r.h_sen_overload * overload * dmg * gate * (1.0 + r.sen_infl_gain * infl)
+        new_sen = alive & ~ag.senescent & ag.competent & (u < 1.0 - np.exp(-h_sen))
         ag.senescent[new_sen] = True
         u = self.rng.uniform(size=ag.capacity)
         h_ferro = r.h_ferro * overload * (1.0 - ag.nrf2)
@@ -177,6 +212,9 @@ class CartilageABM:
         u = self.rng.uniform(size=ag.capacity)
         h_apop = r.h_apop * overload * (0.2 + infl)
         apop = alive & ~ferro & (u < 1.0 - np.exp(-h_apop))
+        if r.senescent_death_rate > 0:                 # extra draw only when enabled: default stream unchanged
+            u = self.rng.uniform(size=ag.capacity)
+            apop = apop | (alive & ag.senescent & ~ferro & (u < 1.0 - np.exp(-r.senescent_death_rate)))
         for mask, cause in ((ferro, 1), (apop, 2)):
             ag.dead[mask] = True; ag.alive[mask] = False; ag.death_cause[mask] = cause
         # 6. proliferation / clusters ----------------------------------------------
@@ -197,6 +235,8 @@ class CartilageABM:
                 ag.z[dst] = np.clip(ag.z[src] + self.rng.normal(0, 0.02), 0, s.h)
                 ag.zone[dst] = s.zone_of(ag.z[dst])
                 ag.S[dst], ag.R[dst], ag.M[dst], ag.nrf2[dst] = ag.S[src], ag.R[src], ag.M[src], ag.nrf2[src]
+                ag.damage[dst] = ag.damage[src]
+                ag.bias[dst], ag.competent[dst] = ag.bias[src], ag.competent[src]
                 ag.cluster[dst] = ag.cluster[src]; ag.alive[dst] = True; ag.age[dst] = 0.0
         ag.age[ag.alive] += 1.0
         # 7. record ----------------------------------------------------------------

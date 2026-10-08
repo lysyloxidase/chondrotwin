@@ -99,7 +99,7 @@ def fig1():
 
 
 # ---------------------------------------------------------------- Figure 2: growth plate + IHH–PTHrP model
-def simulate(kP=1.0, aP=2.0, noP=False, T=12.0):
+def simulate(kP=1.0, aP=2.0, noP=False, T=40.0):  # T=40: the Jansen-like case (kP=0.35) is not yet steady at T=12
     N = 201
     x = np.linspace(0, 1, N); dx = x[1] - x[0]
     DP, DI = 0.03, 0.006
@@ -373,7 +373,7 @@ def fig5():
     outs = [('physiological window\nTRPV4 → oscillatory Ca²⁺ → anabolic genes\n(ACAN, COL2A1); SOX9 maintained', '#dcfce7'),
             ('overload\nPiezo1/2 → Ca²⁺ overload → mitochondrial\nstress, cGAS–STING, GPX4↓ → ferroptosis,\napoptosis, senescence', '#fecaca'),
             ('stiff / degraded matrix\nintegrin–FAK → RhoA → nuclear YAP/TAZ →\ndedifferentiation; YAP ⊣ NF-κB', '#ede9fe'),
-            ('inflammation\nIL-1β → PI3K/AKT/mTOR → Piezo1↑;\nTAK1 → YAP/TAZ degradation (feed-forward)', '#fee2e2')]
+            ('inflammation\nIL-1α → p38 MAPK (HNF4, ATF2) → Piezo1↑;\nTAK1 → YAP/TAZ degradation (feed-forward)', '#fee2e2')]
     y0 = 6.1
     for t, fc in outs:
         box(ax, 8.75, y0 - 1.25, 3.15, 1.15, t, fc=fc, fs=5.5)

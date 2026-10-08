@@ -11,12 +11,12 @@ Matplotlib is imported lazily so that the numerical modules stay dependency-ligh
 from __future__ import annotations
 
 import os
-from typing import Dict, List
+from typing import Dict
 
 import numpy as np
 
 from .biphasic import ConfinedCompression
-from .boolean import SCENARIOS, attractor_table, chondrocyte_network
+from .boolean import SCENARIOS, attractor_table
 from .growth_plate import GrowthPlateModel
 from .landscape import basin_depths, quasi_potential_langevin, schematic_landscape, DEFAULT_BASINS
 from .loading import inverted_u, regime_map

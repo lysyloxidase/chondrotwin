@@ -70,3 +70,87 @@ def test_scaling_helpers():
     b = benchmark(n_steps=2, Lx=0.3, Ly=0.3, h=1.0)
     table = scaling_table(b)
     assert "whole knee" in table and b.seconds_per_step > 0
+
+
+# ---------------------------------------------------------------- stage-2 mechanisms (defaults = 0.2-0.4 model)
+from chondrotwin.abm import Rates
+
+
+def _final(rates, days=90, sigma=0.12e6):
+    return CartilageABM(rates=rates, **SMALL).run(Scenario("over", sigma0=sigma, days=days)).final()
+
+
+def test_stage2_defaults_reproduce_the_original_model():
+    a = _final(Rates(), days=60); b = _final(Rates.stage2(damage_D50=0.0, c_over_max=0.9, k_cat=0.0), days=60)
+    assert a == b
+
+
+def test_cumulative_damage_delays_senescence():
+    assert _final(Rates.stage2(100.0, 0.9, 0.0))["senescent"] < 0.5 * _final(Rates())["senescent"]
+
+
+def test_bounded_mechanical_bias_prevents_switching_without_inflammation():
+    # max strain bias 0.3 < saddle-node 0.51: overload alone cannot flip SOX9-high cells
+    f = CartilageABM(rates=Rates.stage2(1e6, 0.3, 0.0), **SMALL).run(Scenario("over", sigma0=0.12e6, days=90))
+    assert (f.cells.query("~dead")["R"] > f.cells.query("~dead")["S"]).mean() < 0.05
+
+
+def test_switch_independent_catabolism_degrades_matrix():
+    no_cat = _final(Rates.stage2(1e6, 0.3, 0.0))["matrix_superficial"]
+    cat = _final(Rates.stage2(1e6, 0.3, 1.0))["matrix_superficial"]
+    assert cat < no_cat - 0.1
+
+
+# ---------------------------------------------------------------- stage-3 heterogeneity (defaults = 0.2-0.5 model)
+def test_stage3_defaults_reproduce_the_original_model():
+    a = _final(Rates(), days=60)
+    b = _final(Rates(switch_bias_sd=0.0, senescence_competent_fraction=1.0), days=60)
+    assert a == b
+
+
+def test_switch_heterogeneity_creates_runx2_high_cells_in_intact_tissue():
+    res = CartilageABM(rates=Rates.stage2(0.0, 0.15, 0.5), **SMALL).run(Scenario("phys", sigma0=0.05e6, days=60))
+    het = CartilageABM(rates=Rates(c_over_max=0.15, k_cat=0.5, switch_bias_sd=0.6), **SMALL).run(Scenario("phys", sigma0=0.05e6, days=60))
+    frac = lambda r: float((r.cells.query("~dead")["R"] > r.cells.query("~dead")["S"]).mean())   # noqa: E731
+    assert frac(res) < 0.005 and 0.01 < frac(het) < 0.2
+
+
+def test_senescence_competence_caps_senescence():
+    full = _final(Rates(), days=120)["senescent"]
+    capped = _final(Rates(senescence_competent_fraction=0.2), days=120)["senescent"]
+    assert capped < 0.25 and capped < full
+
+
+# ---------------------------------------------------------------- stage-4 senescence logic (defaults = earlier model)
+def test_stage4_defaults_reproduce_the_original_model():
+    assert _final(Rates(), days=60) == _final(Rates(sen_overload_weight=1.0, senescent_death_rate=0.0), days=60)
+
+
+def test_inflammation_gating_delays_overload_senescence():
+    # without cytokines (no senescent / hypertrophic sources yet, no synovial inflammation) gating removes most of it
+    assert _final(Rates(sen_overload_weight=0.0), days=60)["senescent"] < 0.5 * _final(Rates(), days=60)["senescent"]
+
+
+def test_senescent_cells_can_die():
+    f0 = _final(Rates(), days=120); f1 = _final(Rates(senescent_death_rate=0.05), days=120)
+    assert f1["senescent"] < f0["senescent"] and f1["dead_apoptosis"] > f0["dead_apoptosis"]
+
+
+# ---------------------------------------------------------------- stage-5 joint-level inflammation (defaults = earlier model)
+def test_stage5_defaults_reproduce_the_original_model():
+    a = CartilageABM(**SMALL).run(Scenario("o", sigma0=0.12e6, days=60)).final()
+    b = CartilageABM(rates=Rates(k_inf=0.0, sen_infl_gain=2.0), **SMALL).run(Scenario("o", sigma0=0.12e6, days=60, C_joint=0.0)).final()
+    assert a == b
+
+
+def test_joint_level_inflammation_reaches_the_whole_tissue():
+    sim = CartilageABM(**SMALL)
+    sim.run(Scenario("j", sigma0=0.05e6, days=10, C_joint=0.5))
+    assert float(sim.agents.C[sim.agents.alive].min()) >= 0.5
+
+
+def test_inflammation_driven_catabolism_degrades_matrix_without_overload():
+    kw = dict(sigma0=0.05e6, days=120, C_joint=1.0)
+    base = CartilageABM(rates=Rates.stage2(0.0, 0.15, 0.5), **SMALL).run(Scenario("j", **kw)).final()
+    cat = CartilageABM(rates=Rates(c_over_max=0.15, k_cat=0.5, k_inf=2.0), **SMALL).run(Scenario("j", **kw)).final()
+    assert cat["matrix_superficial"] < base["matrix_superficial"] - 0.02

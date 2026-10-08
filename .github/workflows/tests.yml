@@ -13,6 +13,6 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e ".[dev]"
       - run: pytest -q
-      - run: python scripts/make_figures.py figures
-      - run: python scripts/run_abm.py figures/abm_quick --quick
+      - run: python scripts/make_figures.py output/figures
+      - run: python scripts/run_abm.py output/abm_quick --quick
       - run: python scripts/validate.py --quick

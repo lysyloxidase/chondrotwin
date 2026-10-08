@@ -9,7 +9,6 @@ description = "Minimal computable models of chondrocyte fate: the SOX9-RUNX2 tog
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
-authors = [{name = "Author One"}, {name = "Author Two"}, {name = "Author Three"}]
 keywords = ["chondrocyte", "osteoarthritis", "mechanotransduction", "Waddington landscape", "digital twin", "systems biology"]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -25,7 +24,7 @@ data = ["openpyxl>=3.0", "nibabel>=4.0"]
 dev = ["pytest>=7", "matplotlib>=3.5"]
 
 [project.urls]
-Repository = "https://github.com/<org>/chondrotwin"
+Repository = "https://github.com/lysyloxidase/chondrotwin"
 
 [tool.setuptools.packages.find]
 include = ["chondrotwin*"]

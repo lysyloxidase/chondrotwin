@@ -13,7 +13,7 @@ from chondrotwin.abm.plotting import figure_cross_sections, figure_depth_profile
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("outdir", nargs="?", default="figures/abm")
+    p.add_argument("outdir", nargs="?", default="output/abm")
     p.add_argument("--days", type=int, default=365)
     p.add_argument("--cells-per-mm3", type=float, default=1.4e4)
     p.add_argument("--quick", action="store_true", help="smaller slab and fewer days")

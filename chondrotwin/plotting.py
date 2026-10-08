@@ -248,7 +248,7 @@ def figure_twin(path: str | None = None):
     return fig
 
 
-def make_all_figures(outdir: str = "figures") -> Dict[str, str]:
+def make_all_figures(outdir: str = "output/figures") -> Dict[str, str]:
     os.makedirs(outdir, exist_ok=True)
     paths = {
         "figure2_growth_plate": os.path.join(outdir, "figure2_growth_plate.png"),

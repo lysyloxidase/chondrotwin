@@ -104,13 +104,13 @@ def twin():
 
 
 def abm_reproducibility():
-    out("## 6. Agent-based model: reproducibility of the published time courses (figures/abm/*.csv)")
+    out("## 6. Agent-based model: reproducibility of the reference time courses (data/reference/abm/*.csv)")
     sc = [Scenario("physiological", sigma0=0.05e6), Scenario("overload", sigma0=0.12e6),
           Scenario("overload episode", sigma0=lambda d: 0.12e6 if 30 <= d < 90 else 0.05e6),
           Scenario("focal overload", sigma0=0.05e6, focal_factor=1.5), Scenario("inflamed joint", sigma0=0.05e6, C_synovial=1.0),
           Scenario("senescent seeding 10%", sigma0=0.05e6, initial_senescent_fraction=0.10)]
     for s in sc:
-        path = os.path.join(ROOT, "figures", "abm", f"timecourse_{s.name.replace(' ', '_').replace('%', '')}.csv")
+        path = os.path.join(ROOT, "data", "reference", "abm", f"timecourse_{s.name.replace(' ', '_').replace('%', '')}.csv")
         new = CartilageABM(seed=1).run(s).frame()
         ref = pd.read_csv(path, index_col="day")
         out(f"- {s.name}: max |difference| = {(new - ref).abs().max().max():.1e}")

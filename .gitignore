@@ -5,10 +5,8 @@ build/
 dist/
 .pytest_cache/
 .ipynb_checkpoints/
-# figures are published in the article; the scripts regenerate them locally
-figures/**/*.png
-figures/manuscript/
-figures/abm_quick/
+# figures and other script outputs are generated locally, never committed
+output/
 # downloaded open data (see DATA.md; not redistributed)
 data/raw/
 data/derived/

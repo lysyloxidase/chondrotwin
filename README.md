@@ -5,7 +5,7 @@
 > *The Chondrocyte Fate Landscape: A Mechanically Shaped, Computable Attractor Framework Integrating Signaling Networks, Mathematical Modeling, and Artificial Intelligence Toward a Digital Twin of the Chondrocyte.*
 > International Journal of Molecular Sciences, Special Issue "Chondrocyte Fate: Signaling Networks in Development and Disease" (manuscript in preparation).
 
-The paper argues that chondrocyte fate is best understood as a *mechanically shaped, computable attractor landscape* and proposes **CHONDRO-TWIN**, a mechanistic–AI hybrid digital twin of the chondrocyte. This repository makes the "computable" part concrete: every model below is small enough to read in an afternoon, runs in seconds on a laptop, depends only on NumPy, SciPy and pandas (plus Matplotlib for figures), and is covered by tests and by a numerical verification report ([`VALIDATION.md`](VALIDATION.md)). Two of the manuscript figures (Figure 2 and Figure 4) are produced directly from this code.
+The paper argues that chondrocyte fate is best understood as a *mechanically shaped, computable attractor landscape* and proposes **CHONDRO-TWIN**, a mechanistic–AI hybrid digital twin of the chondrocyte. This repository makes the "computable" part concrete: every model below is small enough to read in an afternoon, runs in seconds on a laptop, depends only on NumPy, SciPy and pandas (plus Matplotlib for figures), and is covered by tests and by a numerical verification report ([`VALIDATION.md`](VALIDATION.md)). The computed panels of two manuscript figures (Figures 2 and 4) can be regenerated from this code; no figures are stored in the repository.
 
 | Module | Model | Paper |
 |---|---|---|
@@ -24,7 +24,7 @@ All parameters are illustrative (dimensionless or order-of-magnitude) and are **
 ## Installation
 
 ```bash
-git clone https://github.com/<org>/chondrotwin.git
+git clone https://github.com/lysyloxidase/chondrotwin.git
 cd chondrotwin
 pip install -e ".[dev]"        # numpy, scipy, pandas, matplotlib, pytest  (add ",data" for the knee pipeline)
 pytest                          # 65 tests, ~35 s (2 skip without downloaded data)
@@ -53,28 +53,18 @@ print(classify_state(net.trajectory({"SOX9": 1}, {"LoadOver": 1, "Nrf2": 0})[-1]
 
 See `examples/quickstart.py` for a five-minute tour of every module.
 
-## Reproducing the figures
+## Figures (generated locally, never committed)
 
 ```bash
-python scripts/make_figures.py figures            # Figure 2, Figure 4 + diagnostic figures
-python scripts/run_abm.py figures/abm             # multi-agent cartilage scenarios + scaling table (~40 s)
-python scripts/manuscript_schematics.py figures/manuscript   # schematic Figures 1, 3, 5–10
+python scripts/make_figures.py                     # -> output/figures: Figure 2 and 4 panels + diagnostic figures
+python scripts/run_abm.py                          # -> output/abm: multi-agent scenarios, time courses, scaling table (~40 s)
 python scripts/attractor_table.py > docs/attractors.md       # Boolean attractors per scenario
-python scripts/sweep_toggle.py                    # hysteresis window vs cooperativity
-python scripts/validate.py                        # numerical verification report (VALIDATION.md; ~8 min, --quick ~1 min)
+python scripts/sweep_toggle.py                     # hysteresis window vs cooperativity
+python scripts/validate.py                         # numerical verification report (VALIDATION.md; ~8 min, --quick ~1 min)
 ```
 
-`scripts/make_figures.py` writes:
-
-* `figure2_growth_plate.png` — Figure 2 of the paper (zonation schematic + reaction–diffusion model + perturbations)
-* `figure4_toggle_switch.png` — Figure 4 of the paper (phase plane, bifurcation diagram, memory of a pulse)
-* `landscape_langevin.png` — schematic landscape next to Langevin-sampled quasi-potentials of the switch
-* `loading_regime_map.png` — inverted-U response and magnitude × frequency map
-* `boolean_attractors.png` — basin fractions of each fate state per input scenario
-* `biphasic_creep.png` — confined-compression creep and interstitial pressure profiles
-* `twin_loop.png` — the digital-twin loop under physiological loading, sustained overload, and an overload episode (hysteresis: the cell stays hypertrophic after the load returns to normal)
-
-The figures themselves are not stored in this repository (they are published in the article); the scripts above regenerate them. The agent-based time courses `figures/abm/*.csv` are kept as reference data and re-checked against a fresh run by `scripts/validate.py`.
+The reference time courses of the multi-agent scenarios (`data/reference/abm/*.csv`) are kept in the repository and
+re-checked against a fresh run by `scripts/validate.py`.
 
 ## Multi-agent model: can one agent be one cell?
 
@@ -137,14 +127,14 @@ The equations and default parameters are documented in [`docs/models.md`](docs/m
 ```
 chondrotwin/          package (numpy/scipy numerics; plotting optional); abm/ = multi-agent cartilage model; knee/ = open-data pipeline
 tests/                pytest suite
-scripts/              figures, attractor table, parameter sweep, manuscript schematics, verification (validate.py), data download and knee pipeline
+scripts/              figures (to output/), attractor table, parameter sweep, verification (validate.py), data download and knee pipeline
 examples/             quickstart tour
 docs/                 model equations (models.md), attractor table (attractors.md), knee study (knee_study.md) and its stage reports
                       (knee_open_data.md, knee_stage2–6.md), pre-registrations and frozen parameters
-figures/              output directory of the scripts (images are not tracked); abm/ = reference ABM time courses (CSV)
+data/reference/abm/   reference ABM time courses (CSV) checked by validate.py
 VALIDATION.md         numerical verification: analytical solutions, convergence, reproducibility, seeds, ablations
 DATA.md               open datasets of the knee pipeline: sources, sizes, licenses, citations
-data/                 downloaded (raw/) and derived data - not tracked
+data/raw, data/derived downloaded and derived data - not tracked (output/ likewise)
 ```
 
 ## Limitations
@@ -153,7 +143,7 @@ These are deliberately minimal models. The toggle switch has two variables; the 
 
 ## Citing
 
-If you use this code, please cite the paper (see `CITATION.cff`; the citation will be updated on publication).
+If you use this code, please cite the accompanying article once it is published, and this repository.
 
 ## License
 

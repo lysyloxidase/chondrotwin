@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0 — repository housekeeping
+- No figures in the repository: the manuscript schematic script and the `figures/` folder were removed (the corrected
+  schematic script is in the git history of the previous commit); scripts write figures to the ignored `output/`.
+- Reference ABM time courses moved to `data/reference/abm/` (checked by `scripts/validate.py`).
+- Author fields removed (`pyproject.toml`; `CITATION.cff` deleted); repository URL set.
+
 ## 0.9.0 (2026-10-08) — knee simulation from open data, stage 6 (uncertainty and robustness)
 - `chondrotwin.knee.uq`, `scripts/knee_stage6_run.py`, `scripts/knee_stage6.py`: loss profile over the stage-2
   parameters with a misspecification-scaled 95 % region; prediction ranges inside it; a multiverse of 48 analysis

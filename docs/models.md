@@ -113,3 +113,25 @@ H_A      ← H_A · (1 + k_syn ⟨S⟩ − k_deg ⟨R⟩),  clipped to [0.05, 0.
 ```
 
 With the defaults, σ₀ = 0.05 MPa is physiological (ε_cell ≈ 0.15, m ≈ 0.45, the anabolic optimum) and σ₀ = 0.15 MPa is injurious. An overload episode of 12 cycles switches the cell to RUNX2-high; after the load returns to 0.05 MPa the bias becomes anabolic again (λ ≈ −0.13) but lies inside the hysteresis window, so the cell stays hypertrophic and the matrix keeps degrading — the in-silico vicious cycle of Figure `twin_loop.png`.
+
+## 8. Multi-agent cartilage model (`chondrotwin.abm`) — one agent = one chondrocyte
+
+**Agents.** Each chondrocyte is one agent with position (x, y, z; z = 0 at the articular surface), zone (superficial / middle / deep), toggle-switch state (S, R), territorial matrix content M ∈ [0.05, 1], antioxidant capacity nrf2 ~ Beta(4, 2), age, flags (senescent, dead with cause, cluster id). The population is a structure of arrays (float32/int8/bool, ≈ 60 bytes per agent) so every rule is a vectorized NumPy operation.
+
+**Environment.** A slab Lx × Ly × h (default 1 × 1 × 2 mm) on a voxel grid (10 × 10 × 20). Cells are seeded at the measured depth-dependent densities (≈ 2.4e4 / 1.0e4 / 0.8e4 cells mm⁻³ superficial / middle / deep, scaled to a mean of 1.4e4 mm⁻³ → 28,000 agents per slab).
+
+**Mechanics (per day).** Applied stress σ(x, y) (optionally with a Gaussian focal factor) is uniform through each column; the aggregate modulus increases with depth, H_A(z) = 0.4 → 1.2 MPa, and is softened by matrix loss, H_eff = H_A(z) · max(M_voxel, 0.3)^1.5, where M_voxel is the mean territorial matrix of the live cells in the voxel (empty voxels decay at 2 %/day). Tissue strain ε = min(σ / H_eff, 0.6); cell strain = 1.5 ε (pericellular amplification). Matrix loss therefore raises local strain.
+
+**Cytokine field (quasi-steady).** D ∇²C − k C + P = 0 with D = 0.5 mm² day⁻¹, k = 5 day⁻¹, Dirichlet C = C_syn at the surface (synovial fluid), zero flux elsewhere; P from senescent cells (rate 1) and hypertrophic cells (0.25), normalized so that a fully senescent voxel at the reference density gives C = 1. Solved once per day with a pre-factorized sparse operator (cytokine kinetics are fast relative to cell-state kinetics).
+
+**Fate dynamics.** λ_i = catabolic_bias(cell strain / 0.40) + 0.6 · C/(0.5 + C), clipped to (−0.95, 0.95); the toggle switch of Section 1 is integrated for one day (4 Euler–Maruyama substeps, Δt = 0.25, noise 0.10) per cell with its own λ_i. Senescent cells are frozen.
+
+**Matrix turnover.** dM = 0.008 · S · (1 − M) · (0.2 if senescent) − 0.008 · R · M · (1 + 2 · C/(0.5 + C)) per day.
+
+**Hazards (per day).** With overload o = sigmoid((m − 0.8)/0.08), m = cell strain / 0.40: senescence 3e-5 + 0.012 · o · (1 + 2 C/(0.5 + C)); ferroptosis 0.006 · o · (1 − nrf2); apoptosis 0.003 · o · (0.2 + C/(0.5 + C)). Dead cells keep their slot (cell loss is reported).
+
+**Proliferation.** Live, non-senescent cells with M < 0.6 divide with probability 0.003 per day (cluster size ≤ 8); daughters are placed within ≈ 20 µm and inherit the parent state → chondrocyte clusters in degraded matrix.
+
+**Outputs.** Fate fractions (articular, hypertrophic, senescent, dead by ferroptosis / apoptosis, relative to the initial cell number), matrix and strain by zone, mean cytokine, number of clusters, and an OARSI-like score 0–6 (surface matrix loss + cell loss + clusters). Scenarios: physiological (σ = 0.05 MPa), overload (0.12 MPa), overload episode, focal overload, inflamed joint (C_syn = 1), senescent seeding.
+
+**Scaling.** Time per step is linear in the number of agents (≈ 20 ms per 28,000 agents per day on a laptop core). A whole human knee (~2e4 mm³ of cartilage, ~3e8 cells) would need ~17 GB and ~20 h per simulated year with this single-process NumPy implementation — feasible on a workstation, trivial for GPU agent frameworks, but the intended use is a representative volume driven by a joint-scale strain field (Figure 7 of the paper); `tile_plan()` and `scaling_table()` give the numbers.

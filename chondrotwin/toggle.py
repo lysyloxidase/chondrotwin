@@ -64,6 +64,12 @@ class ToggleSwitch:
         dR = self.alpha_r * (1.0 + lam) * self.hill_rep(S) + self.beta_r - self.gamma * R
         return np.array([dS, dR], dtype=float)
 
+    def rhs_arrays(self, S: np.ndarray, R: np.ndarray, lam: np.ndarray):
+        """Vectorized right-hand side for arrays of cells with per-cell bias (used by the agent-based model)."""
+        dS = self.alpha_s * (1.0 - lam) * self.hill_rep(R) + self.beta_s - self.gamma * S
+        dR = self.alpha_r * (1.0 + lam) * self.hill_rep(S) + self.beta_r - self.gamma * R
+        return dS, dR
+
     def nullcline_S(self, R: np.ndarray, lam: float = 0.0) -> np.ndarray:
         """S as a function of R on the dS/dt = 0 nullcline."""
         return (self.alpha_s * (1.0 - lam) * self.hill_rep(R) + self.beta_s) / self.gamma
